@@ -4,11 +4,11 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const app = express();
 
-// ==================== CONFIG ====================
+
 app.use(cors());
 app.use(express.json());
 
-const token = jwt.sign({ id: 1 }, 'your_jwt_secret'); // For user 1
+const token = jwt.sign({ id: 1 }, 'your_jwt_secret');
 console.log(token);
 
 const db = mysql.createPool({
@@ -18,13 +18,13 @@ const db = mysql.createPool({
   database: 'rr'
 });
 
-// ==================== AUTH MIDDLEWARE ====================
+
 const authenticateUser = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ message: 'Unauthorized' });
 
   try {
-    const decoded = jwt.verify(token, 'your_jwt_secret'); // Use a secure secret in prod
+    const decoded = jwt.verify(token, 'your_jwt_secret'); 
     req.user = { id: decoded.id };
     next();
   } catch (err) {
@@ -32,22 +32,20 @@ const authenticateUser = async (req, res, next) => {
   }
 };
 
-// ==================== PROFANITY FILTER ====================
+
 const blockedWords = ['badword1', 'badword2', 'uglyword'];
 function containsProfanity(text) {
   const regex = new RegExp(`\\b(${blockedWords.join('|')})\\b`, 'i');
   return regex.test(text);
 }
 
-// ==================== REVIEW ROUTES ====================
 
-// POST /api/reviews - Submit a review
 app.post('/api/reviews', authenticateUser, async (req, res) => {
   const { courseId, rating, comment } = req.body;
   const userId = req.user.id;
 
   try {
-    // 1. Check if user completed the course
+    
     const [completed] = await db.execute(
       `SELECT * FROM enrollments WHERE user_id = ? AND course_id = ? AND status = 'completed'`,
       [userId, courseId]
@@ -56,7 +54,7 @@ app.post('/api/reviews', authenticateUser, async (req, res) => {
       return res.status(403).json({ message: 'You must complete the course to submit a review.' });
     }
 
-    // 2. Check for duplicate review
+    
     const [existingReview] = await db.execute(
       `SELECT * FROM reviews WHERE user_id = ? AND course_id = ?`,
       [userId, courseId]
@@ -65,12 +63,12 @@ app.post('/api/reviews', authenticateUser, async (req, res) => {
       return res.status(400).json({ message: 'You’ve already submitted a review for this course.' });
     }
 
-    // 3. Profanity check
+   
     if (containsProfanity(comment)) {
       return res.status(400).json({ message: 'Your review contains inappropriate language.' });
     }
 
-    // 4. Insert review
+    
     await db.execute(
       `INSERT INTO reviews (user_id, course_id, rating, comment, is_approved) VALUES (?, ?, ?, ?, true)`,
       [userId, courseId, rating, comment]
@@ -83,7 +81,7 @@ app.post('/api/reviews', authenticateUser, async (req, res) => {
   }
 });
 
-// GET /api/reviews/:courseId - Get all reviews for a course
+
 app.get('/api/reviews/:courseId', async (req, res) => {
   const courseId = req.params.courseId;
   try {
@@ -97,7 +95,7 @@ app.get('/api/reviews/:courseId', async (req, res) => {
   }
 });
 
-// GET /api/reviews/:courseId/user - Get current user's review
+
 app.get('/api/reviews/:courseId/user', authenticateUser, async (req, res) => {
   const courseId = req.params.courseId;
   const userId = req.user.id;
@@ -119,7 +117,7 @@ app.get('/api/reviews/:courseId/user', authenticateUser, async (req, res) => {
   }
 });
 
-// ==================== SERVER START ====================
+
 app.listen(5000, () => {
   console.log('Server running on http://localhost:5000');
 });
